@@ -10,7 +10,7 @@ import ShoppingList from './components/ShoppingList';
 import AddItemForm from './components/AddItemForm';
 import SearchBar from './components/SearchBar';
 import CategoryFilter from './components/CategoryFilter';
-import logo from './assets/logo.png';
+import logo from './assets/logo2.png';
 import './index.css';
 
 const theme = createTheme({
@@ -138,8 +138,8 @@ function App() {
                 src={logo} 
                 alt="Courses Faciles Logo" 
                 style={{ 
-                  width: '120px', 
-                  height: '120px',
+                  width: '180px',
+                  height: 'auto',
                   marginBottom: '16px',
                   filter: 'drop-shadow(0px 4px 6px rgba(0, 0, 0, 0.1))',
                   animation: 'float 3s ease-in-out infinite'
