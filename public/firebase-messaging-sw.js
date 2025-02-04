@@ -16,16 +16,28 @@ const messaging = firebase.messaging();
 
 // Gérer les messages en arrière-plan
 messaging.onBackgroundMessage((payload) => {
-  console.log('Message reçu en arrière-plan:', payload);
+  console.log('[firebase-messaging-sw.js] Message reçu en arrière-plan:', payload);
   
-  const notificationTitle = "Nouvel article ajouté";
-  const notificationOptions = {
-    body: `${payload.data?.itemName || 'Un nouvel article'} a été ajouté à la liste`,
+  let notificationTitle = "Nouvel article ajouté";
+  let notificationOptions = {
+    body: 'Un nouvel article a été ajouté à la liste',
     icon: '/icons/icon-192x192.png',
     badge: '/icons/icon-192x192.png',
     tag: 'new-item',
-    vibrate: [200, 100, 200]
+    vibrate: [200, 100, 200],
+    data: {
+      click_action: 'https://courses-faciles-v2.vercel.app' // Remplacez par votre URL Vercel
+    }
   };
+
+  if (payload.data) {
+    if (payload.data.title) {
+      notificationTitle = payload.data.title;
+    }
+    if (payload.data.body) {
+      notificationOptions.body = payload.data.body;
+    }
+  }
 
   self.registration.showNotification(notificationTitle, notificationOptions);
 });

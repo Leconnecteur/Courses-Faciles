@@ -89,6 +89,20 @@ export default function AddItemForm({ onAdd, db }) {
       await onAdd(newItem);
       
       try {
+        console.log('Préparation de la notification...');
+        const message = {
+          notification: {
+            title: 'Nouvel article ajouté',
+            body: `${newItem.name} a été ajouté à la liste`,
+          },
+          data: {
+            title: 'Nouvel article ajouté',
+            body: `${newItem.name} a été ajouté à la liste`,
+            itemName: newItem.name,
+            category: newItem.category
+          }
+        };
+
         console.log('Récupération des tokens pour les notifications...');
         const tokensRef = ref(db, 'notification_tokens');
         const snapshot = await get(tokensRef);
@@ -96,14 +110,30 @@ export default function AddItemForm({ onAdd, db }) {
         
         console.log('Tokens disponibles:', tokens);
         
-        Object.values(tokens).forEach(tokenData => {
+        // Pour chaque token enregistré
+        for (const tokenData of Object.values(tokens)) {
           if (tokenData.token) {
-            console.log(`Préparation de la notification pour ${tokenData.browser}:`, {
-              token: tokenData.token.substring(0, 10) + '...',
-              browser: tokenData.browser
-            });
+            console.log(`Envoi de la notification au navigateur ${tokenData.browser}`);
+            try {
+              const response = await fetch('https://fcm.googleapis.com/fcm/send', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `key=${import.meta.env.VITE_FCM_SERVER_KEY}`
+                },
+                body: JSON.stringify({
+                  to: tokenData.token,
+                  ...message
+                })
+              });
+              
+              const result = await response.json();
+              console.log('Résultat de l\'envoi:', result);
+            } catch (error) {
+              console.error('Erreur lors de l\'envoi de la notification:', error);
+            }
           }
-        });
+        }
       } catch (error) {
         console.error('Erreur lors de l\'envoi des notifications:', error);
       }
