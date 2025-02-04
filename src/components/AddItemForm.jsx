@@ -40,6 +40,7 @@ export default function AddItemForm({ onAdd, db }) {
     // Demander la permission pour les notifications au chargement du composant
     const requestNotificationPermission = async () => {
       try {
+        console.log('Demande de permission de notifications...');
         const result = await notificationService.requestPermission();
         console.log('Résultat de la demande de permission:', result);
       } catch (error) {
@@ -84,26 +85,29 @@ export default function AddItemForm({ onAdd, db }) {
         timestamp: Date.now()
       };
       
-      // Ajouter l'item
+      console.log('Ajout d\'un nouvel article:', newItem);
       await onAdd(newItem);
       
-      // Envoyer une notification via Firebase Cloud Messaging
       try {
+        console.log('Récupération des tokens pour les notifications...');
         const tokensRef = ref(db, 'notification_tokens');
         const snapshot = await get(tokensRef);
         const tokens = snapshot.val() || {};
         
-        // Pour chaque token enregistré
+        console.log('Tokens disponibles:', tokens);
+        
         Object.values(tokens).forEach(tokenData => {
           if (tokenData.token) {
-            console.log(`Envoi de notification au navigateur ${tokenData.browser}`);
+            console.log(`Préparation de la notification pour ${tokenData.browser}:`, {
+              token: tokenData.token.substring(0, 10) + '...',
+              browser: tokenData.browser
+            });
           }
         });
       } catch (error) {
         console.error('Erreur lors de l\'envoi des notifications:', error);
       }
       
-      // Réinitialiser les champs
       setItem('');
       setQuantity('');
       setCategory(categories[0]);

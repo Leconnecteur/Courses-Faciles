@@ -9,52 +9,68 @@ class NotificationService {
   }
 
   getBrowserType() {
-    // Détection du navigateur
-    if (navigator.userAgent.indexOf("Chrome") != -1) {
+    const userAgent = navigator.userAgent;
+    console.log('UserAgent:', userAgent);
+    
+    if (userAgent.indexOf("Chrome") != -1) {
+      console.log('Navigateur détecté: Chrome');
       return 'chrome';
-    } else if (navigator.userAgent.indexOf("Safari") != -1) {
+    } else if (userAgent.indexOf("Safari") != -1) {
+      console.log('Navigateur détecté: Safari');
       return 'safari';
     } else {
+      console.log('Navigateur détecté: Autre');
       return 'other';
     }
   }
 
   getStorageKey() {
-    return `notificationPermissionRequested_${this.getBrowserType()}`;
+    const key = `notificationPermissionRequested_${this.getBrowserType()}`;
+    console.log('Storage key:', key);
+    return key;
   }
 
   async requestPermission() {
     try {
+      console.log('Début de la demande de permission');
       const browserType = this.getBrowserType();
       const storageKey = this.getStorageKey();
       const hasRequestedPermission = localStorage.getItem(storageKey);
+      console.log('Permission déjà demandée?', hasRequestedPermission);
+      console.log('Permission actuelle:', Notification.permission);
       
-      // Si la permission a déjà été accordée
       if (Notification.permission === 'granted') {
+        console.log('Permission déjà accordée, récupération du token');
         const token = await this.getToken();
         if (token) {
+          console.log('Token obtenu, sauvegarde');
           await this.saveToken(token, browserType);
           return true;
         }
+        console.log('Pas de token obtenu');
         return false;
       }
       
-      // Si on a déjà demandé la permission et qu'elle a été refusée
       if (hasRequestedPermission && Notification.permission === 'denied') {
+        console.log('Permission déjà refusée');
         return false;
       }
       
-      // Si on n'a jamais demandé la permission
       if (!hasRequestedPermission) {
+        console.log('Première demande de permission');
         const permission = await Notification.requestPermission();
+        console.log('Réponse à la demande:', permission);
         localStorage.setItem(storageKey, 'true');
         
         if (permission === 'granted') {
+          console.log('Permission accordée, récupération du token');
           const token = await this.getToken();
           if (token) {
+            console.log('Token obtenu, sauvegarde');
             await this.saveToken(token, browserType);
             return true;
           }
+          console.log('Pas de token obtenu après permission');
         }
       }
       
@@ -67,10 +83,13 @@ class NotificationService {
 
   async getToken() {
     try {
+      console.log('Tentative de récupération du token');
       const currentToken = await getToken(this.messaging, { vapidKey: this.vapidKey });
       if (currentToken) {
+        console.log('Token récupéré:', currentToken.substring(0, 10) + '...');
         return currentToken;
       }
+      console.log('Pas de token disponible');
       return null;
     } catch (error) {
       console.error('Erreur lors de la récupération du token:', error);
@@ -80,25 +99,28 @@ class NotificationService {
 
   async saveToken(token, browserType) {
     try {
+      console.log('Sauvegarde du token pour', browserType);
       const tokensRef = ref(db, 'notification_tokens');
       const snapshot = await get(tokensRef);
       const tokens = snapshot.val() || {};
       
-      // Créer une clé unique qui inclut le type de navigateur
       const tokenKey = `${Date.now()}_${browserType}`;
       
-      // Vérifier si le token existe déjà pour ce navigateur
       const existingTokenEntry = Object.entries(tokens).find(([key, value]) => 
         value.token === token && value.browser === browserType
       );
       
       if (!existingTokenEntry) {
+        console.log('Nouveau token, sauvegarde en cours');
         const newTokenRef = ref(db, `notification_tokens/${tokenKey}`);
         await set(newTokenRef, {
           token: token,
           browser: browserType,
           timestamp: Date.now()
         });
+        console.log('Token sauvegardé avec succès');
+      } else {
+        console.log('Token déjà existant pour ce navigateur');
       }
     } catch (error) {
       console.error('Erreur lors de la sauvegarde du token:', error);
@@ -107,6 +129,7 @@ class NotificationService {
 
   onMessageReceived(callback) {
     return onMessage(this.messaging, (payload) => {
+      console.log('Message reçu:', payload);
       callback(payload);
     });
   }
