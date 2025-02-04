@@ -15,6 +15,7 @@ import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
 import { findCategory } from '../utils/categoryMapping';
 import { useSuggestions } from '../hooks/useSuggestions';
 import { notificationService } from '../services/notificationService';
+import { ref, get } from 'firebase/database';
 
 const categories = [
   'Fruits et Légumes',
@@ -26,7 +27,7 @@ const categories = [
   'Autre'
 ];
 
-export default function AddItemForm({ onAdd }) {
+export default function AddItemForm({ onAdd, db }) {
   const [item, setItem] = useState('');
   const [category, setCategory] = useState(categories[0]);
   const [quantity, setQuantity] = useState('');
@@ -37,7 +38,15 @@ export default function AddItemForm({ onAdd }) {
 
   useEffect(() => {
     // Demander la permission pour les notifications au chargement du composant
-    notificationService.requestPermission();
+    const requestNotificationPermission = async () => {
+      try {
+        const result = await notificationService.requestPermission();
+        console.log('Résultat de la demande de permission:', result);
+      } catch (error) {
+        console.error('Erreur lors de la demande de permission:', error);
+      }
+    };
+    requestNotificationPermission();
   }, []);
 
   useEffect(() => {
@@ -75,7 +84,24 @@ export default function AddItemForm({ onAdd }) {
         timestamp: Date.now()
       };
       
+      // Ajouter l'item
       await onAdd(newItem);
+      
+      // Envoyer une notification via Firebase Cloud Messaging
+      try {
+        const tokensRef = ref(db, 'notification_tokens');
+        const snapshot = await get(tokensRef);
+        const tokens = snapshot.val() || {};
+        
+        // Pour chaque token enregistré
+        Object.values(tokens).forEach(tokenData => {
+          if (tokenData.token) {
+            console.log(`Envoi de notification au navigateur ${tokenData.browser}`);
+          }
+        });
+      } catch (error) {
+        console.error('Erreur lors de l\'envoi des notifications:', error);
+      }
       
       // Réinitialiser les champs
       setItem('');

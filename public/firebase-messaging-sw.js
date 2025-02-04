@@ -14,11 +14,17 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const messaging = firebase.messaging();
 
+// Gérer les messages en arrière-plan
 messaging.onBackgroundMessage((payload) => {
+  console.log('Message reçu en arrière-plan:', payload);
+  
   const notificationTitle = "Nouvel article ajouté";
   const notificationOptions = {
-    body: `${payload.data.itemName} a été ajouté à la liste`,
-    icon: '/icons/icon-192x192.png'
+    body: `${payload.data?.itemName || 'Un nouvel article'} a été ajouté à la liste`,
+    icon: '/icons/icon-192x192.png',
+    badge: '/icons/icon-192x192.png',
+    tag: 'new-item',
+    vibrate: [200, 100, 200]
   };
 
   self.registration.showNotification(notificationTitle, notificationOptions);
