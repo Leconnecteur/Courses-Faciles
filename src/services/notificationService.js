@@ -1,11 +1,12 @@
 import { getMessaging, getToken, onMessage } from 'firebase/messaging';
 import { ref, set, get } from 'firebase/database';
 import { db } from '../config/firebase';
+import { vapidKey } from '../config/firebase';
 
 class NotificationService {
   constructor() {
     this.messaging = getMessaging();
-    this.vapidKey = 'sG1s-79jS3VGF6KSy21_5F7BdIx278pUtd2n6K9Cr-U';
+    this.vapidKey = vapidKey;
   }
 
   getBrowserType() {

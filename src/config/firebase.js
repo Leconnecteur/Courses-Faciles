@@ -14,6 +14,8 @@ const firebaseConfig = {
   databaseURL: "https://courses-faciles-default-rtdb.europe-west1.firebasedatabase.app"
 };
 
+export const vapidKey = 'BNfRsbR2MZYSJbRcF7C2GdEAwwzWfFUtieAukXpO7kKPOz3ftgFmprjbXnlBwudVyD3FqZtWHhsbU2yZppxN1Z4';
+
 const app = initializeApp(firebaseConfig);
 const analytics = getAnalytics(app);
 export const db = getDatabase(app);
