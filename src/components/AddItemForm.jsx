@@ -14,6 +14,7 @@ import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
 import { findCategory } from '../utils/categoryMapping';
 import { useSuggestions } from '../hooks/useSuggestions';
+import { notificationService } from '../services/notificationService';
 
 const categories = [
   'Fruits et Légumes',
@@ -33,6 +34,11 @@ export default function AddItemForm({ onAdd }) {
   const [suggestions, setSuggestions] = useState([]);
   const [relatedItems, setRelatedItems] = useState([]);
   const { getSuggestions, getRelatedItems } = useSuggestions();
+
+  useEffect(() => {
+    // Demander la permission pour les notifications au chargement du composant
+    notificationService.requestPermission();
+  }, []);
 
   useEffect(() => {
     if (item.trim().length > 1) {
@@ -59,21 +65,25 @@ export default function AddItemForm({ onAdd }) {
     }
   }, [item]);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!item.trim()) return;
-
-    onAdd({
-      name: item.trim(),
-      category: category,
-      quantity: quantity || '1',
-      completed: false,
-      createdAt: Date.now()
-    });
-
-    setItem('');
-    setCategory(categories[0]);
-    setQuantity('');
+    if (item.trim()) {
+      const newItem = {
+        name: item.trim(),
+        category: category,
+        quantity: quantity.trim() || '1',
+        timestamp: Date.now()
+      };
+      
+      await onAdd(newItem);
+      
+      // Réinitialiser les champs
+      setItem('');
+      setQuantity('');
+      setCategory(categories[0]);
+      setSuggestions([]);
+      setRelatedItems([]);
+    }
   };
 
   const handleSuggestionClick = (suggestion) => {
