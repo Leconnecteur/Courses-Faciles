@@ -11,6 +11,23 @@
       console.log("iOS Input Fix: Activé pour iOS en mode standalone");
       console.log("Version iOS détectée:", isIOS18Plus ? "iOS 18+" : "iOS <18");
       
+      // Créer un élément input caché qui sera utilisé pour déclencher le clavier
+      const hiddenInput = document.createElement('input');
+      hiddenInput.setAttribute('type', 'text');
+      hiddenInput.style.position = 'fixed';
+      hiddenInput.style.top = '0';
+      hiddenInput.style.left = '0';
+      hiddenInput.style.opacity = '0';
+      hiddenInput.style.height = '1px';
+      hiddenInput.style.width = '1px';
+      hiddenInput.style.pointerEvents = 'none';
+      hiddenInput.style.zIndex = '-1';
+      hiddenInput.setAttribute('inputmode', 'text');
+      hiddenInput.setAttribute('enterkeyhint', 'done');
+      
+      // Ajouter l'input au DOM
+      document.body.appendChild(hiddenInput);
+      
       // Technique spéciale pour iOS 18+
       if (isIOS18Plus) {
         console.log("iOS Input Fix: Utilisation de la technique pour iOS 18+");
@@ -21,35 +38,74 @@
           console.log("iOS Input Fix: Focus appelé sur", this.tagName);
           
           if (this.tagName === 'INPUT' || this.tagName === 'TEXTAREA') {
-            // Créer un input temporaire pour "réveiller" le clavier iOS
-            const tempInput = document.createElement('input');
-            tempInput.setAttribute('type', 'text');
-            tempInput.style.position = 'fixed';
-            tempInput.style.top = '0';
-            tempInput.style.left = '0';
-            tempInput.style.opacity = '0.01';
-            tempInput.style.height = '1px';
-            tempInput.style.width = '1px';
-            tempInput.style.pointerEvents = 'none';
-            tempInput.style.zIndex = '-1';
+            // Forcer l'affichage du clavier en utilisant un input natif
+            hiddenInput.focus();
+            hiddenInput.click();
+            hiddenInput.value = ' '; // Ajouter un espace pour forcer le clavier
             
-            document.body.appendChild(tempInput);
+            // Simuler une frappe pour forcer l'apparition du clavier
+            const inputEvent = new InputEvent('input', {
+              bubbles: true,
+              cancelable: true,
+              data: ' '
+            });
+            hiddenInput.dispatchEvent(inputEvent);
             
-            // Focus sur l'input temporaire
-            originalFocus.call(tempInput);
-            
-            // Puis focus sur l'élément réel
+            // Puis focus sur l'élément réel après un court délai
             setTimeout(() => {
               originalFocus.call(this);
               
-              // Supprimer l'input temporaire après utilisation
-              setTimeout(() => {
-                document.body.removeChild(tempInput);
-              }, 100);
-            }, 50);
+              // Simuler une interaction utilisateur
+              this.click();
+              
+              // Simuler une frappe pour forcer l'apparition du clavier
+              const inputEvent = new InputEvent('input', {
+                bubbles: true,
+                cancelable: true,
+                data: ' '
+              });
+              this.dispatchEvent(inputEvent);
+              
+              // Vider l'input caché
+              hiddenInput.value = '';
+            }, 100);
           } else {
             // Pour les autres éléments, comportement normal
             originalFocus.call(this);
+          }
+        };
+        
+        // Remplacer également la méthode click pour les inputs
+        const originalClick = HTMLElement.prototype.click;
+        HTMLElement.prototype.click = function() {
+          console.log("iOS Input Fix: Click appelé sur", this.tagName);
+          
+          if ((this.tagName === 'INPUT' || this.tagName === 'TEXTAREA') && 
+              (this === document.activeElement)) {
+            // Si l'élément est déjà focus, forcer l'apparition du clavier
+            hiddenInput.focus();
+            hiddenInput.click();
+            
+            // Simuler une frappe
+            hiddenInput.value = ' ';
+            const inputEvent = new InputEvent('input', {
+              bubbles: true,
+              cancelable: true,
+              data: ' '
+            });
+            hiddenInput.dispatchEvent(inputEvent);
+            
+            // Puis revenir à l'élément réel
+            setTimeout(() => {
+              originalClick.call(this);
+              originalFocus.call(this);
+              
+              // Vider l'input caché
+              hiddenInput.value = '';
+            }, 100);
+          } else {
+            // Comportement normal
+            originalClick.call(this);
           }
         };
       }
@@ -93,11 +149,13 @@
         if (input.dataset.iosFix) return;
         input.dataset.iosFix = 'true';
         
-        // Désactiver l'autocorrection et l'autocomplétion qui peuvent interférer
+        // Configurer l'input pour maximiser les chances d'afficher le clavier
         input.setAttribute('autocomplete', 'off');
         input.setAttribute('autocorrect', 'off');
         input.setAttribute('autocapitalize', 'off');
         input.setAttribute('spellcheck', 'false');
+        input.setAttribute('inputmode', 'text');
+        input.setAttribute('enterkeyhint', 'done');
         
         // Ajouter des gestionnaires d'événements pour forcer l'ouverture du clavier
         const forceKeyboard = function(e) {
@@ -108,27 +166,35 @@
           e.stopPropagation();
           
           if (isIOS18Plus) {
-            // Pour iOS 18+, nous utilisons une technique spéciale
-            const tempInput = document.createElement('input');
-            tempInput.setAttribute('type', 'text');
-            tempInput.style.position = 'fixed';
-            tempInput.style.top = '0';
-            tempInput.style.left = '0';
-            tempInput.style.opacity = '0.01';
-            tempInput.style.height = '1px';
-            tempInput.style.width = '1px';
-            tempInput.style.pointerEvents = 'none';
+            // Pour iOS 18+, utiliser l'input caché
+            hiddenInput.focus();
+            hiddenInput.click();
             
-            document.body.appendChild(tempInput);
-            tempInput.focus();
+            // Simuler une frappe
+            hiddenInput.value = ' ';
+            const inputEvent = new InputEvent('input', {
+              bubbles: true,
+              cancelable: true,
+              data: ' '
+            });
+            hiddenInput.dispatchEvent(inputEvent);
             
+            // Puis focus sur l'input réel
             setTimeout(() => {
               input.focus();
               input.click();
               
-              // Supprimer l'input temporaire
-              document.body.removeChild(tempInput);
-            }, 50);
+              // Simuler une frappe sur l'input réel
+              const realInputEvent = new InputEvent('input', {
+                bubbles: true,
+                cancelable: true,
+                data: ' '
+              });
+              input.dispatchEvent(realInputEvent);
+              
+              // Vider l'input caché
+              hiddenInput.value = '';
+            }, 100);
           } else {
             // Pour les versions iOS antérieures
             input.focus();
@@ -145,6 +211,19 @@
         input.addEventListener('mouseup', forceKeyboard, { passive: false });
         input.addEventListener('click', forceKeyboard, { passive: false });
       }
+      
+      // Ajouter un gestionnaire global pour les clics sur le document
+      document.addEventListener('click', function(e) {
+        const target = e.target;
+        if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') {
+          // Ne rien faire, l'élément a déjà son propre gestionnaire
+        } else if (target.closest('input, textarea')) {
+          // Si le clic est sur un élément à l'intérieur d'un input (comme un icône)
+          const input = target.closest('input, textarea');
+          input.focus();
+          input.click();
+        }
+      });
     }
   }
   

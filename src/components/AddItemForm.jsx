@@ -39,6 +39,56 @@ export default function AddItemForm({ onAdd, db }) {
   const formRef = useRef(null);
   const [isIOSStandalone, setIsIOSStandalone] = useState(false);
   const [useNativeInput, setUseNativeInput] = useState(false);
+  const [hasFocus, setHasFocus] = useState(false);
+
+  useEffect(() => {
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
+                         navigator.standalone;
+    setIsIOSStandalone(isIOS && isStandalone);
+    
+    const isIOS18Plus = isIOS && /OS 18_/.test(navigator.userAgent);
+    setUseNativeInput(isIOS18Plus && isStandalone);
+    
+    if (isIOS18Plus && isStandalone) {
+      const hiddenInput = document.createElement('input');
+      hiddenInput.setAttribute('type', 'text');
+      hiddenInput.style.position = 'fixed';
+      hiddenInput.style.top = '0';
+      hiddenInput.style.left = '0';
+      hiddenInput.style.opacity = '0';
+      hiddenInput.style.height = '1px';
+      hiddenInput.style.width = '1px';
+      hiddenInput.style.pointerEvents = 'none';
+      hiddenInput.style.zIndex = '-1';
+      hiddenInput.setAttribute('inputmode', 'text');
+      hiddenInput.setAttribute('enterkeyhint', 'done');
+      
+      document.body.appendChild(hiddenInput);
+      
+      const originalFocus = HTMLElement.prototype.focus;
+      window.iosFocusFixed = true; 
+      
+      if (!window.iosFocusFixed) {
+        HTMLElement.prototype.focus = function() {
+          console.log("Focus appelé sur", this.tagName);
+          
+          if (this.tagName === 'INPUT' || this.tagName === 'TEXTAREA') {
+            hiddenInput.focus();
+            hiddenInput.click();
+            
+            setTimeout(() => {
+              originalFocus.call(this);
+            }, 50);
+          } else {
+            originalFocus.call(this);
+          }
+        };
+        
+        window.iosFocusFixed = true;
+      }
+    }
+  }, []);
 
   useEffect(() => {
     const requestNotificationPermission = async () => {
@@ -51,16 +101,6 @@ export default function AddItemForm({ onAdd, db }) {
       }
     };
     requestNotificationPermission();
-  }, []);
-
-  useEffect(() => {
-    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
-                         navigator.standalone;
-    setIsIOSStandalone(isIOS && isStandalone);
-    
-    const isIOS18Plus = isIOS && /OS 18_/.test(navigator.userAgent);
-    setUseNativeInput(isIOS18Plus && isStandalone);
   }, []);
 
   useEffect(() => {
@@ -165,25 +205,27 @@ export default function AddItemForm({ onAdd, db }) {
   const focusInput = () => {
     if (inputRef.current) {
       if (isIOSStandalone) {
-        const tempInput = document.createElement('input');
-        tempInput.style.position = 'absolute';
-        tempInput.style.opacity = '0';
-        tempInput.style.height = '0';
-        tempInput.style.top = '0';
-        tempInput.style.left = '0';
-        
-        document.body.appendChild(tempInput);
-        
-        tempInput.focus();
+        const nativeInput = inputRef.current;
         
         setTimeout(() => {
-          inputRef.current.focus();
-          document.body.removeChild(tempInput);
+          nativeInput.focus();
+          
+          nativeInput.click();
+          
+          const event = new Event('input', { bubbles: true });
+          nativeInput.dispatchEvent(event);
+          
+          setHasFocus(true);
         }, 100);
       } else {
         inputRef.current.focus();
+        setHasFocus(true);
       }
     }
+  };
+
+  const handleBlur = () => {
+    setHasFocus(false);
   };
 
   return (
@@ -192,32 +234,30 @@ export default function AddItemForm({ onAdd, db }) {
         <Box sx={{ display: 'flex', gap: 1, mb: showDetails ? 2 : 0 }}>
           <Box sx={{ flex: 1 }}>
             {useNativeInput ? (
-              <TextField
+              <input
+                type="text"
                 value={item}
                 onChange={(e) => setItem(e.target.value)}
                 placeholder="Ajouter un article..."
-                size="small"
-                className="input-field"
-                inputRef={inputRef}
+                ref={inputRef}
                 onClick={focusInput}
                 onTouchStart={focusInput}
+                onFocus={() => setHasFocus(true)}
+                onBlur={handleBlur}
                 autoComplete="off"
-                sx={{
-                  '& .MuiOutlinedInput-root': {
-                    borderRadius: '12px',
-                    backgroundColor: '#F7FAFC',
-                    '&:hover': {
-                      '& > fieldset': {
-                        borderColor: 'primary.main',
-                      },
-                    },
-                  },
-                  '& .MuiOutlinedInput-notchedOutline': {
-                    borderColor: 'transparent',
-                  },
-                  '&:hover .MuiOutlinedInput-notchedOutline': {
-                    borderColor: 'primary.light',
-                  },
+                autoCorrect="off"
+                autoCapitalize="off"
+                spellCheck="false"
+                inputMode="text"
+                enterKeyHint="done"
+                style={{
+                  width: '100%',
+                  padding: '8.5px 14px',
+                  borderRadius: '12px',
+                  backgroundColor: '#F7FAFC',
+                  border: hasFocus ? '1px solid #38B2AC' : '1px solid transparent',
+                  outline: 'none',
+                  fontSize: '16px', 
                 }}
               />
             ) : (
@@ -246,7 +286,17 @@ export default function AddItemForm({ onAdd, db }) {
                     inputRef={inputRef}
                     onClick={focusInput}
                     onTouchStart={focusInput}
+                    onFocus={() => setHasFocus(true)}
+                    onBlur={handleBlur}
                     autoComplete="off"
+                    inputProps={{
+                      ...params.inputProps,
+                      autoCorrect: "off",
+                      autoCapitalize: "off",
+                      spellCheck: "false",
+                      inputMode: "text",
+                      enterKeyHint: "done"
+                    }}
                     sx={{
                       '& .MuiOutlinedInput-root': {
                         borderRadius: '12px',
