@@ -45,49 +45,11 @@ export default function AddItemForm({ onAdd, db }) {
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
     const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
                          navigator.standalone;
+    
+    console.log("Détection de l'environnement:", { isIOS, isStandalone });
     setIsIOSStandalone(isIOS && isStandalone);
     
-    const isIOS18Plus = isIOS && /OS 18_/.test(navigator.userAgent);
-    setUseNativeInput(isIOS18Plus && isStandalone);
-    
-    if (isIOS18Plus && isStandalone) {
-      const hiddenInput = document.createElement('input');
-      hiddenInput.setAttribute('type', 'text');
-      hiddenInput.style.position = 'fixed';
-      hiddenInput.style.top = '0';
-      hiddenInput.style.left = '0';
-      hiddenInput.style.opacity = '0';
-      hiddenInput.style.height = '1px';
-      hiddenInput.style.width = '1px';
-      hiddenInput.style.pointerEvents = 'none';
-      hiddenInput.style.zIndex = '-1';
-      hiddenInput.setAttribute('inputmode', 'text');
-      hiddenInput.setAttribute('enterkeyhint', 'done');
-      
-      document.body.appendChild(hiddenInput);
-      
-      const originalFocus = HTMLElement.prototype.focus;
-      window.iosFocusFixed = true; 
-      
-      if (!window.iosFocusFixed) {
-        HTMLElement.prototype.focus = function() {
-          console.log("Focus appelé sur", this.tagName);
-          
-          if (this.tagName === 'INPUT' || this.tagName === 'TEXTAREA') {
-            hiddenInput.focus();
-            hiddenInput.click();
-            
-            setTimeout(() => {
-              originalFocus.call(this);
-            }, 50);
-          } else {
-            originalFocus.call(this);
-          }
-        };
-        
-        window.iosFocusFixed = true;
-      }
-    }
+    setUseNativeInput(isIOS);
   }, []);
 
   useEffect(() => {
@@ -202,28 +164,20 @@ export default function AddItemForm({ onAdd, db }) {
     setItem(suggestion);
   };
 
-  const focusInput = () => {
+  const focusInput = (e) => {
+    console.log("focusInput appelé");
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    
     if (inputRef.current) {
-      if (isIOSStandalone) {
-        const nativeInput = inputRef.current;
-        
-        setTimeout(() => {
-          nativeInput.focus();
-          
-          nativeInput.click();
-          
-          const event = new Event('input', { bubbles: true });
-          nativeInput.dispatchEvent(event);
-          
-          setHasFocus(true);
-        }, 100);
-      } else {
-        inputRef.current.focus();
-        setHasFocus(true);
-      }
+      console.log("Tentative de focus sur l'input");
+      inputRef.current.focus();
+      setHasFocus(true);
     }
   };
-
+  
   const handleBlur = () => {
     setHasFocus(false);
   };
@@ -234,32 +188,59 @@ export default function AddItemForm({ onAdd, db }) {
         <Box sx={{ display: 'flex', gap: 1, mb: showDetails ? 2 : 0 }}>
           <Box sx={{ flex: 1 }}>
             {useNativeInput ? (
-              <input
-                type="text"
-                value={item}
-                onChange={(e) => setItem(e.target.value)}
-                placeholder="Ajouter un article..."
-                ref={inputRef}
-                onClick={focusInput}
-                onTouchStart={focusInput}
-                onFocus={() => setHasFocus(true)}
-                onBlur={handleBlur}
-                autoComplete="off"
-                autoCorrect="off"
-                autoCapitalize="off"
-                spellCheck="false"
-                inputMode="text"
-                enterKeyHint="done"
-                style={{
-                  width: '100%',
-                  padding: '8.5px 14px',
-                  borderRadius: '12px',
-                  backgroundColor: '#F7FAFC',
-                  border: hasFocus ? '1px solid #38B2AC' : '1px solid transparent',
-                  outline: 'none',
-                  fontSize: '16px', 
-                }}
-              />
+              <div style={{ position: 'relative', width: '100%' }}>
+                <input
+                  type="text"
+                  value={item}
+                  onChange={(e) => setItem(e.target.value)}
+                  placeholder="Ajouter un article..."
+                  ref={inputRef}
+                  autoComplete="off"
+                  autoCorrect="off"
+                  autoCapitalize="off"
+                  spellCheck="false"
+                  inputMode="text"
+                  style={{
+                    width: '100%',
+                    padding: '10px 14px',
+                    borderRadius: '12px',
+                    backgroundColor: '#F7FAFC',
+                    border: hasFocus ? '1px solid #38B2AC' : '1px solid transparent',
+                    outline: 'none',
+                    fontSize: '16px',
+                    WebkitAppearance: 'none',
+                  }}
+                />
+                {suggestions.length > 0 && item.trim().length > 1 && (
+                  <div style={{
+                    position: 'absolute',
+                    top: '100%',
+                    left: 0,
+                    right: 0,
+                    backgroundColor: 'white',
+                    borderRadius: '0 0 12px 12px',
+                    boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+                    zIndex: 10
+                  }}>
+                    {suggestions.map((suggestion, index) => (
+                      <div 
+                        key={index}
+                        onClick={() => {
+                          setItem(suggestion);
+                          inputRef.current.focus();
+                        }}
+                        style={{
+                          padding: '8px 14px',
+                          borderBottom: index < suggestions.length - 1 ? '1px solid #eee' : 'none',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        {suggestion}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             ) : (
               <Autocomplete
                 freeSolo
@@ -268,7 +249,6 @@ export default function AddItemForm({ onAdd, db }) {
                 onInputChange={(event, newValue) => setItem(newValue)}
                 options={suggestions}
                 size="small"
-                onClick={focusInput}
                 sx={{
                   '& .MuiOutlinedInput-root': {
                     padding: '0px !important',
@@ -284,8 +264,6 @@ export default function AddItemForm({ onAdd, db }) {
                     size="small"
                     className="input-field"
                     inputRef={inputRef}
-                    onClick={focusInput}
-                    onTouchStart={focusInput}
                     onFocus={() => setHasFocus(true)}
                     onBlur={handleBlur}
                     autoComplete="off"
@@ -295,7 +273,6 @@ export default function AddItemForm({ onAdd, db }) {
                       autoCapitalize: "off",
                       spellCheck: "false",
                       inputMode: "text",
-                      enterKeyHint: "done"
                     }}
                     sx={{
                       '& .MuiOutlinedInput-root': {
