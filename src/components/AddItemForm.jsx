@@ -36,9 +36,11 @@ export default function AddItemForm({ onAdd, db }) {
   const [relatedItems, setRelatedItems] = useState([]);
   const { getSuggestions, getRelatedItems } = useSuggestions();
   const inputRef = useRef(null);
+  const formRef = useRef(null);
+  const [isIOSStandalone, setIsIOSStandalone] = useState(false);
+  const [useNativeInput, setUseNativeInput] = useState(false);
 
   useEffect(() => {
-    // Demander la permission pour les notifications au chargement du composant
     const requestNotificationPermission = async () => {
       try {
         console.log('Demande de permission de notifications...');
@@ -49,6 +51,16 @@ export default function AddItemForm({ onAdd, db }) {
       }
     };
     requestNotificationPermission();
+  }, []);
+
+  useEffect(() => {
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
+                         navigator.standalone;
+    setIsIOSStandalone(isIOS && isStandalone);
+    
+    const isIOS18Plus = isIOS && /OS 18_/.test(navigator.userAgent);
+    setUseNativeInput(isIOS18Plus && isStandalone);
   }, []);
 
   useEffect(() => {
@@ -111,7 +123,6 @@ export default function AddItemForm({ onAdd, db }) {
         
         console.log('Tokens disponibles:', tokens);
         
-        // Pour chaque token enregistré
         for (const tokenData of Object.values(tokens)) {
           if (tokenData.token) {
             console.log(`Envoi de la notification au navigateur ${tokenData.browser}`);
@@ -152,65 +163,111 @@ export default function AddItemForm({ onAdd, db }) {
   };
 
   const focusInput = () => {
-    // Force le focus et l'ouverture du clavier sur iOS
     if (inputRef.current) {
-      inputRef.current.focus();
-      // Petit délai pour s'assurer que le focus est appliqué
-      setTimeout(() => {
-        inputRef.current.click();
-      }, 100);
+      if (isIOSStandalone) {
+        const tempInput = document.createElement('input');
+        tempInput.style.position = 'absolute';
+        tempInput.style.opacity = '0';
+        tempInput.style.height = '0';
+        tempInput.style.top = '0';
+        tempInput.style.left = '0';
+        
+        document.body.appendChild(tempInput);
+        
+        tempInput.focus();
+        
+        setTimeout(() => {
+          inputRef.current.focus();
+          document.body.removeChild(tempInput);
+        }, 100);
+      } else {
+        inputRef.current.focus();
+      }
     }
   };
 
   return (
     <Box sx={{ width: '100%', mb: 2 }}>
-      <Box component="form" onSubmit={handleSubmit} className="add-item-form">
+      <Box component="form" onSubmit={handleSubmit} className="add-item-form" ref={formRef}>
         <Box sx={{ display: 'flex', gap: 1, mb: showDetails ? 2 : 0 }}>
           <Box sx={{ flex: 1 }}>
-            <Autocomplete
-              freeSolo
-              value={item}
-              onChange={(event, newValue) => setItem(newValue || '')}
-              onInputChange={(event, newValue) => setItem(newValue)}
-              options={suggestions}
-              size="small"
-              onClick={focusInput}
-              sx={{
-                '& .MuiOutlinedInput-root': {
-                  padding: '0px !important',
-                },
-                '& .MuiAutocomplete-input': {
-                  padding: '8.5px 14px !important',
-                }
-              }}
-              renderInput={(params) => (
-                <TextField
-                  {...params}
-                  placeholder="Ajouter un article..."
-                  size="small"
-                  className="input-field"
-                  inputRef={inputRef}
-                  onClick={focusInput}
-                  sx={{
-                    '& .MuiOutlinedInput-root': {
-                      borderRadius: '12px',
-                      backgroundColor: '#F7FAFC',
-                      '&:hover': {
-                        '& > fieldset': {
-                          borderColor: 'primary.main',
-                        },
+            {useNativeInput ? (
+              <TextField
+                value={item}
+                onChange={(e) => setItem(e.target.value)}
+                placeholder="Ajouter un article..."
+                size="small"
+                className="input-field"
+                inputRef={inputRef}
+                onClick={focusInput}
+                onTouchStart={focusInput}
+                autoComplete="off"
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    borderRadius: '12px',
+                    backgroundColor: '#F7FAFC',
+                    '&:hover': {
+                      '& > fieldset': {
+                        borderColor: 'primary.main',
                       },
                     },
-                    '& .MuiOutlinedInput-notchedOutline': {
-                      borderColor: 'transparent',
-                    },
-                    '&:hover .MuiOutlinedInput-notchedOutline': {
-                      borderColor: 'primary.light',
-                    },
-                  }}
-                />
-              )}
-            />
+                  },
+                  '& .MuiOutlinedInput-notchedOutline': {
+                    borderColor: 'transparent',
+                  },
+                  '&:hover .MuiOutlinedInput-notchedOutline': {
+                    borderColor: 'primary.light',
+                  },
+                }}
+              />
+            ) : (
+              <Autocomplete
+                freeSolo
+                value={item}
+                onChange={(event, newValue) => setItem(newValue || '')}
+                onInputChange={(event, newValue) => setItem(newValue)}
+                options={suggestions}
+                size="small"
+                onClick={focusInput}
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    padding: '0px !important',
+                  },
+                  '& .MuiAutocomplete-input': {
+                    padding: '8.5px 14px !important',
+                  }
+                }}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    placeholder="Ajouter un article..."
+                    size="small"
+                    className="input-field"
+                    inputRef={inputRef}
+                    onClick={focusInput}
+                    onTouchStart={focusInput}
+                    autoComplete="off"
+                    sx={{
+                      '& .MuiOutlinedInput-root': {
+                        borderRadius: '12px',
+                        backgroundColor: '#F7FAFC',
+                        '&:hover': {
+                          '& > fieldset': {
+                            borderColor: 'primary.main',
+                          },
+                        },
+                      },
+                      '& .MuiOutlinedInput-notchedOutline': {
+                        borderColor: 'transparent',
+                      },
+                      '&:hover .MuiOutlinedInput-notchedOutline': {
+                        borderColor: 'primary.light',
+                      },
+                    }}
+                  />
+                )}
+              />
+            )}
           </Box>
           <Button
             type="submit"
