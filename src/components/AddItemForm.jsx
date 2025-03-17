@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { 
   TextField, 
   Button, 
@@ -35,6 +35,7 @@ export default function AddItemForm({ onAdd, db }) {
   const [suggestions, setSuggestions] = useState([]);
   const [relatedItems, setRelatedItems] = useState([]);
   const { getSuggestions, getRelatedItems } = useSuggestions();
+  const inputRef = useRef(null);
 
   useEffect(() => {
     // Demander la permission pour les notifications au chargement du composant
@@ -150,6 +151,17 @@ export default function AddItemForm({ onAdd, db }) {
     setItem(suggestion);
   };
 
+  const focusInput = () => {
+    // Force le focus et l'ouverture du clavier sur iOS
+    if (inputRef.current) {
+      inputRef.current.focus();
+      // Petit délai pour s'assurer que le focus est appliqué
+      setTimeout(() => {
+        inputRef.current.click();
+      }, 100);
+    }
+  };
+
   return (
     <Box sx={{ width: '100%', mb: 2 }}>
       <Box component="form" onSubmit={handleSubmit} className="add-item-form">
@@ -162,6 +174,7 @@ export default function AddItemForm({ onAdd, db }) {
               onInputChange={(event, newValue) => setItem(newValue)}
               options={suggestions}
               size="small"
+              onClick={focusInput}
               sx={{
                 '& .MuiOutlinedInput-root': {
                   padding: '0px !important',
@@ -176,6 +189,8 @@ export default function AddItemForm({ onAdd, db }) {
                   placeholder="Ajouter un article..."
                   size="small"
                   className="input-field"
+                  inputRef={inputRef}
+                  onClick={focusInput}
                   sx={{
                     '& .MuiOutlinedInput-root': {
                       borderRadius: '12px',
