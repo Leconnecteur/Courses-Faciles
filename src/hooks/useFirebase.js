@@ -1,14 +1,22 @@
 import { useEffect, useState } from 'react';
 import { ref, onValue, push, remove, set } from 'firebase/database';
 import { db } from '../config/firebase';
+import { useAuth } from '../contexts/AuthContext';
 
 export const useFirebase = () => {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
+  const { currentUser } = useAuth();
 
   useEffect(() => {
     console.log('Initializing Firebase connection...');
-    const itemsRef = ref(db, 'shopping-items');
+    if (!currentUser) {
+      setItems([]);
+      setLoading(false);
+      return () => {};
+    }
+    
+    const itemsRef = ref(db, `users/${currentUser.uid}/shopping-items`);
     
     const unsubscribe = onValue(itemsRef, (snapshot) => {
       console.log('Received data from Firebase:', snapshot.val());
@@ -31,12 +39,14 @@ export const useFirebase = () => {
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [currentUser]);
 
   const addItem = async (item) => {
     try {
+      if (!currentUser) throw new Error('Utilisateur non connecté');
+      
       console.log('Adding item:', item);
-      const itemsRef = ref(db, 'shopping-items');
+      const itemsRef = ref(db, `users/${currentUser.uid}/shopping-items`);
       const result = await push(itemsRef, {
         ...item,
         createdAt: Date.now()
@@ -51,8 +61,10 @@ export const useFirebase = () => {
 
   const removeItem = async (itemId) => {
     try {
+      if (!currentUser) throw new Error('Utilisateur non connecté');
+      
       console.log('Removing item:', itemId);
-      const itemRef = ref(db, `shopping-items/${itemId}`);
+      const itemRef = ref(db, `users/${currentUser.uid}/shopping-items/${itemId}`);
       await remove(itemRef);
       console.log('Item removed successfully');
     } catch (error) {
@@ -62,7 +74,9 @@ export const useFirebase = () => {
   };
 
   const updateItem = async (itemId, updates) => {
-    const itemRef = ref(db, `shopping-items/${itemId}`);
+    if (!currentUser) throw new Error('Utilisateur non connecté');
+    
+    const itemRef = ref(db, `users/${currentUser.uid}/shopping-items/${itemId}`);
     await set(itemRef, updates);
   };
 
