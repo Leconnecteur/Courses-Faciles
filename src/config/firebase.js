@@ -24,6 +24,29 @@ export const mockMessaging = {
   onMessage: () => () => {}
 };
 
+// Fonction pour initialiser Firebase Messaging de manière asynchrone
+export const initializeMessaging = () => {
+  // En développement, on utilise toujours le mock
+  if (isDevelopment) {
+    return Promise.resolve(mockMessaging);
+  }
+  
+  // En production, on charge le module de manière dynamique
+  return import('firebase/messaging')
+    .then(firebaseMessaging => {
+      const { getMessaging, getToken, onMessage } = firebaseMessaging;
+      const messagingInstance = getMessaging(app);
+      return {
+        getToken: (options) => getToken(messagingInstance, options),
+        onMessage: (callback) => onMessage(messagingInstance, callback)
+      };
+    })
+    .catch(error => {
+      console.error('Erreur lors du chargement de Firebase Messaging:', error);
+      return mockMessaging; // Fallback en cas d'erreur
+    });
+};
+
 export const vapidKey = 'BNfRsbR2MZYSJbRcF7C2GdEAwwzWfFUtieAukXpO7kKPOz3ftgFmprjbXnlBwudVyD3FqZtWHhsbU2yZppxN1Z4';
 
 const app = initializeApp(firebaseConfig);
@@ -32,5 +55,5 @@ const app = initializeApp(firebaseConfig);
 export const db = getDatabase(app);
 export const auth = getAuth(app);
 
-// Utiliser toujours le mock pour Firebase Messaging
+// Exporter le mock pour une utilisation immédiate
 export const messaging = mockMessaging;
