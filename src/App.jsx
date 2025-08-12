@@ -5,7 +5,9 @@ import { useAuth } from './contexts/AuthContext';
 import LandingPage from './pages/LandingPage';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
-import AppPage from './pages/AppPage';
+import DashboardPage from './pages/DashboardPage';
+import StoreSelectionPage from './pages/StoreSelectionPage';
+import ListPage from './pages/ListPage';
 import PrivateRoute from './components/PrivateRoute';
 import './index.css';
 
@@ -54,7 +56,9 @@ function App() {
         <Route path="/login" element={currentUser ? <Navigate to="/app" /> : <Login />} />
         <Route path="/signup" element={currentUser ? <Navigate to="/app" /> : <Signup />} />
         <Route element={<PrivateRoute />}>
-          <Route path="/app" element={<AppPage />} />
+          <Route path="/app" element={<DashboardPage />} />
+          <Route path="/new-list" element={<StoreSelectionPage />} />
+          <Route path="/list/:listId" element={<ListPage />} />
         </Route>
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>

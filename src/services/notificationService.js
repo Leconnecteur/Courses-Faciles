@@ -1,12 +1,37 @@
-import { getMessaging, getToken, onMessage } from 'firebase/messaging';
 import { ref, set, get } from 'firebase/database';
 import { db } from '../config/firebase';
 import { vapidKey } from '../config/firebase';
 
+// Déterminer si nous sommes en environnement de développement
+const isDevelopment = window.location.hostname === 'localhost' || 
+                     window.location.hostname === '127.0.0.1' ||
+                     window.location.hostname.includes('192.168');
+
+// Import conditionnel pour éviter les erreurs en développement
+let getMessaging, getToken, onMessage;
+if (!isDevelopment) {
+  const firebaseMessaging = await import('firebase/messaging');
+  getMessaging = firebaseMessaging.getMessaging;
+  getToken = firebaseMessaging.getToken;
+  onMessage = firebaseMessaging.onMessage;
+}
+
 class NotificationService {
   constructor() {
-    this.messaging = getMessaging();
+    this.isDevelopment = isDevelopment;
     this.vapidKey = vapidKey;
+    
+    if (!this.isDevelopment) {
+      try {
+        this.messaging = getMessaging();
+      } catch (error) {
+        console.warn('Firebase Messaging non disponible:', error);
+        this.messaging = null;
+      }
+    } else {
+      console.log('Mode développement: Firebase Messaging désactivé');
+      this.messaging = null;
+    }
   }
 
   getBrowserType() {
@@ -32,6 +57,12 @@ class NotificationService {
   }
 
   async requestPermission() {
+    // En mode développement, simuler une permission accordée
+    if (this.isDevelopment) {
+      console.log('Mode développement: Simulation de permission accordée');
+      return true;
+    }
+    
     try {
       console.log('Début de la demande de permission');
       const browserType = this.getBrowserType();
@@ -83,7 +114,18 @@ class NotificationService {
   }
 
   async getToken() {
+    // En mode développement, retourner un token fictif
+    if (this.isDevelopment) {
+      console.log('Mode développement: Utilisation d\'un token fictif');
+      return 'dev-token-' + Date.now();
+    }
+    
     try {
+      if (!this.messaging) {
+        console.log('Firebase Messaging non initialisé');
+        return null;
+      }
+      
       console.log('Tentative de récupération du token');
       const currentToken = await getToken(this.messaging, { vapidKey: this.vapidKey });
       if (currentToken) {
@@ -129,6 +171,17 @@ class NotificationService {
   }
 
   onMessageReceived(callback) {
+    // En mode développement, ne rien faire
+    if (this.isDevelopment) {
+      console.log('Mode développement: Notifications désactivées');
+      return () => {};
+    }
+    
+    if (!this.messaging) {
+      console.log('Firebase Messaging non initialisé');
+      return () => {};
+    }
+    
     return onMessage(this.messaging, (payload) => {
       console.log('Message reçu:', payload);
       callback(payload);

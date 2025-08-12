@@ -72,7 +72,7 @@ export default function AddItemForm({ onAdd, db }) {
     } else {
       setSuggestions([]);
     }
-  }, [item, getSuggestions]);
+  }, [item]);  // Suppression de getSuggestions de la liste des dépendances
 
   useEffect(() => {
     if (item.trim()) {
@@ -81,7 +81,7 @@ export default function AddItemForm({ onAdd, db }) {
     } else {
       setRelatedItems([]);
     }
-  }, [item, getRelatedItems]);
+  }, [item]);  // Suppression de getRelatedItems de la liste des dépendances
 
   useEffect(() => {
     if (item.trim()) {
@@ -101,62 +101,26 @@ export default function AddItemForm({ onAdd, db }) {
       };
       
       console.log('Ajout d\'un nouvel article:', newItem);
-      await onAdd(newItem);
       
       try {
-        console.log('Préparation de la notification...');
-        const message = {
-          notification: {
-            title: 'Nouvel article ajouté',
-            body: `${newItem.name} a été ajouté à la liste`,
-          },
-          data: {
-            title: 'Nouvel article ajouté',
-            body: `${newItem.name} a été ajouté à la liste`,
-            itemName: newItem.name,
-            category: newItem.category
-          }
-        };
-
-        console.log('Récupération des tokens pour les notifications...');
-        const tokensRef = ref(db, 'notification_tokens');
-        const snapshot = await get(tokensRef);
-        const tokens = snapshot.val() || {};
+        await onAdd(newItem);
+        console.log('Article ajouté avec succès');
         
-        console.log('Tokens disponibles:', tokens);
+        // Réinitialiser le formulaire après l'ajout réussi
+        setItem('');
+        setQuantity('');
+        setShowDetails(false);
         
-        for (const tokenData of Object.values(tokens)) {
-          if (tokenData.token) {
-            console.log(`Envoi de la notification au navigateur ${tokenData.browser}`);
-            try {
-              const response = await fetch('https://fcm.googleapis.com/fcm/send', {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                  'Authorization': `key=${import.meta.env.VITE_FCM_SERVER_KEY}`
-                },
-                body: JSON.stringify({
-                  to: tokenData.token,
-                  ...message
-                })
-              });
-              
-              const result = await response.json();
-              console.log('Résultat de l\'envoi:', result);
-            } catch (error) {
-              console.error('Erreur lors de l\'envoi de la notification:', error);
-            }
-          }
+        // Focus sur le champ de saisie pour faciliter l'ajout d'un nouvel article
+        if (inputRef.current) {
+          inputRef.current.focus();
         }
+        
+        // NOTE: Les notifications sont temporairement désactivées pour éviter les erreurs
+        // Le code de notification a été retiré pour résoudre les problèmes de boucle infinie
       } catch (error) {
-        console.error('Erreur lors de l\'envoi des notifications:', error);
+        console.error('Erreur lors de l\'ajout de l\'article:', error);
       }
-      
-      setItem('');
-      setQuantity('');
-      setCategory(categories[0]);
-      setSuggestions([]);
-      setRelatedItems([]);
     }
   };
 
