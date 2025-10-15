@@ -15,7 +15,10 @@ import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
 import { findCategory } from '../utils/categoryMapping';
 import { useSuggestions } from '../hooks/useSuggestions';
 import { notificationService } from '../services/notificationService';
-import { ref, get } from 'firebase/database';
+import { ref, get, set } from 'firebase/database';
+import { db } from '../config/firebase';
+import { useAuth } from '../contexts/AuthContext';
+import { seedUserHistory, isHistoryEmpty } from '../utils/seedHistory';
 
 const categories = [
   'Fruits et Légumes',
@@ -27,19 +30,21 @@ const categories = [
   'Autre'
 ];
 
-export default function AddItemForm({ onAdd, db }) {
+export default function AddItemForm({ onAdd }) {
   const [item, setItem] = useState('');
   const [category, setCategory] = useState(categories[0]);
   const [quantity, setQuantity] = useState('');
   const [showDetails, setShowDetails] = useState(false);
   const [suggestions, setSuggestions] = useState([]);
   const [relatedItems, setRelatedItems] = useState([]);
-  const { getSuggestions, getRelatedItems } = useSuggestions();
+  const { getSuggestions, getRelatedItems, recentItems } = useSuggestions();
+  const { currentUser } = useAuth();
   const inputRef = useRef(null);
   const formRef = useRef(null);
   const [isIOSStandalone, setIsIOSStandalone] = useState(false);
   const [useNativeInput, setUseNativeInput] = useState(false);
   const [hasFocus, setHasFocus] = useState(false);
+  const [showSeedButton, setShowSeedButton] = useState(false);
 
   useEffect(() => {
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
@@ -65,14 +70,28 @@ export default function AddItemForm({ onAdd, db }) {
     requestNotificationPermission();
   }, []);
 
+  // Vérifier si l'historique est vide et afficher le bouton d'initialisation
   useEffect(() => {
-    if (item.trim().length > 1) {
+    const checkHistory = async () => {
+      if (currentUser && recentItems.length === 0) {
+        const isEmpty = await isHistoryEmpty(currentUser.uid);
+        setShowSeedButton(isEmpty);
+      } else {
+        setShowSeedButton(false);
+      }
+    };
+    
+    checkHistory();
+  }, [currentUser, recentItems]);
+
+  useEffect(() => {
+    if (item.trim().length >= 2) {
       const newSuggestions = getSuggestions(item);
       setSuggestions(newSuggestions);
     } else {
       setSuggestions([]);
     }
-  }, [item]);  // Suppression de getSuggestions de la liste des dépendances
+  }, [item, getSuggestions]);
 
   useEffect(() => {
     if (item.trim()) {
@@ -81,7 +100,7 @@ export default function AddItemForm({ onAdd, db }) {
     } else {
       setRelatedItems([]);
     }
-  }, [item]);  // Suppression de getRelatedItems de la liste des dépendances
+  }, [item, getRelatedItems]);
 
   useEffect(() => {
     if (item.trim()) {
@@ -89,6 +108,27 @@ export default function AddItemForm({ onAdd, db }) {
       setCategory(suggestedCategory);
     }
   }, [item]);
+
+  // Sauvegarder l'article dans l'historique
+  const saveToHistory = async (itemName, itemCategory) => {
+    if (!currentUser) return;
+    
+    try {
+      const historyRef = ref(db, `users/${currentUser.uid}/item-history/${itemName}`);
+      const snapshot = await get(historyRef);
+      const existingData = snapshot.val();
+      
+      await set(historyRef, {
+        count: (existingData?.count || 0) + 1,
+        lastUsed: Date.now(),
+        category: itemCategory
+      });
+      
+      console.log('Article sauvegardé dans l\'historique:', itemName);
+    } catch (error) {
+      console.error('Erreur lors de la sauvegarde dans l\'historique:', error);
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -105,6 +145,9 @@ export default function AddItemForm({ onAdd, db }) {
       try {
         await onAdd(newItem);
         console.log('Article ajouté avec succès');
+        
+        // Sauvegarder dans l'historique
+        await saveToHistory(newItem.name, newItem.category);
         
         // Réinitialiser le formulaire après l'ajout réussi
         setItem('');
@@ -128,6 +171,19 @@ export default function AddItemForm({ onAdd, db }) {
     setItem(suggestion);
   };
 
+  const handleSeedHistory = async () => {
+    if (!currentUser) return;
+    
+    try {
+      await seedUserHistory(currentUser.uid);
+      setShowSeedButton(false);
+      alert('✅ Historique initialisé ! Vous pouvez maintenant tester l\'autocomplétion en tapant "oe" pour oeufs ou "to" pour tomates.');
+    } catch (error) {
+      console.error('Erreur lors de l\'initialisation:', error);
+      alert('❌ Erreur lors de l\'initialisation de l\'historique');
+    }
+  };
+
   const focusInput = (e) => {
     console.log("focusInput appelé");
     if (e) {
@@ -148,6 +204,34 @@ export default function AddItemForm({ onAdd, db }) {
 
   return (
     <Box sx={{ width: '100%', mb: 2 }}>
+      {showSeedButton && (
+        <Box 
+          sx={{ 
+            mb: 2, 
+            p: 2, 
+            backgroundColor: '#E6FFFA',
+            borderRadius: '12px',
+            border: '1px solid #38B2AC'
+          }}
+        >
+          <Typography variant="body2" sx={{ mb: 1, color: 'text.secondary' }}>
+            💡 <strong>Astuce :</strong> Initialisez l'historique avec des articles courants pour tester l'autocomplétion immédiatement !
+          </Typography>
+          <Button
+            variant="contained"
+            size="small"
+            onClick={handleSeedHistory}
+            sx={{
+              backgroundColor: 'primary.main',
+              '&:hover': {
+                backgroundColor: 'primary.dark',
+              },
+            }}
+          >
+            Initialiser l'historique
+          </Button>
+        </Box>
+      )}
       <Box component="form" onSubmit={handleSubmit} className="add-item-form" ref={formRef}>
         <Box sx={{ display: 'flex', gap: 1, mb: showDetails ? 2 : 0 }}>
           <Box sx={{ flex: 1 }}>
@@ -159,10 +243,10 @@ export default function AddItemForm({ onAdd, db }) {
                   onChange={(e) => setItem(e.target.value)}
                   placeholder="Ajouter un article..."
                   ref={inputRef}
-                  autoComplete="off"
-                  autoCorrect="off"
-                  autoCapitalize="off"
-                  spellCheck="false"
+                  autoComplete="on"
+                  autoCorrect="on"
+                  autoCapitalize="sentences"
+                  spellCheck="true"
                   inputMode="text"
                   style={{
                     width: '100%',
@@ -175,7 +259,7 @@ export default function AddItemForm({ onAdd, db }) {
                     WebkitAppearance: 'none',
                   }}
                 />
-                {suggestions.length > 0 && item.trim().length > 1 && (
+                {suggestions.length > 0 && item.trim().length >= 2 && (
                   <div style={{
                     position: 'absolute',
                     top: '100%',
@@ -183,23 +267,35 @@ export default function AddItemForm({ onAdd, db }) {
                     right: 0,
                     backgroundColor: 'white',
                     borderRadius: '0 0 12px 12px',
-                    boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
-                    zIndex: 10
+                    boxShadow: '0 8px 16px rgba(0,0,0,0.15)',
+                    zIndex: 1000,
+                    marginTop: '4px',
+                    border: '1px solid #E2E8F0',
+                    maxHeight: '200px',
+                    overflowY: 'auto'
                   }}>
                     {suggestions.map((suggestion, index) => (
                       <div 
                         key={index}
                         onClick={() => {
                           setItem(suggestion);
-                          inputRef.current.focus();
+                          setSuggestions([]);
+                          if (inputRef.current) {
+                            inputRef.current.focus();
+                          }
                         }}
                         style={{
-                          padding: '8px 14px',
-                          borderBottom: index < suggestions.length - 1 ? '1px solid #eee' : 'none',
-                          cursor: 'pointer'
+                          padding: '12px 14px',
+                          borderBottom: index < suggestions.length - 1 ? '1px solid #F7FAFC' : 'none',
+                          cursor: 'pointer',
+                          fontSize: '16px',
+                          transition: 'background-color 0.2s',
+                          backgroundColor: 'white'
                         }}
+                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#F7FAFC'}
+                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'white'}
                       >
-                        {suggestion}
+                        <span style={{ fontWeight: 500, color: '#2D3748' }}>{suggestion}</span>
                       </div>
                     ))}
                   </div>
@@ -230,12 +326,12 @@ export default function AddItemForm({ onAdd, db }) {
                     inputRef={inputRef}
                     onFocus={() => setHasFocus(true)}
                     onBlur={handleBlur}
-                    autoComplete="off"
+                    autoComplete="on"
                     inputProps={{
                       ...params.inputProps,
-                      autoCorrect: "off",
-                      autoCapitalize: "off",
-                      spellCheck: "false",
+                      autoCorrect: "on",
+                      autoCapitalize: "sentences",
+                      spellCheck: "true",
                       inputMode: "text",
                     }}
                     sx={{
