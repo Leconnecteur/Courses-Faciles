@@ -174,7 +174,60 @@ function ListPage() {
           <Box sx={{ 
             mb: 6,
             position: 'relative',
+            pt: 2, // Padding top pour éviter la safe area
           }}>
+            {/* Boutons de navigation en haut */}
+            <Box sx={{ 
+              display: 'flex', 
+              justifyContent: 'space-between', 
+              alignItems: 'center',
+              mb: 3,
+              gap: 1
+            }}>
+              <Button
+                variant="outlined"
+                color="primary"
+                onClick={handleBackToDashboard}
+                startIcon={<ArrowBackIcon />}
+                sx={{ 
+                  borderRadius: '12px',
+                  textTransform: 'none',
+                  fontSize: '0.9rem',
+                  py: 1,
+                  px: 2,
+                  minHeight: '44px', // Taille tactile recommandée
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                  '&:hover': {
+                    boxShadow: '0 4px 8px rgba(0,0,0,0.15)',
+                  }
+                }}
+              >
+                Retour
+              </Button>
+              
+              <Button
+                variant="outlined"
+                color="primary"
+                onClick={handleLogout}
+                startIcon={<ExitToAppIcon />}
+                sx={{ 
+                  borderRadius: '12px',
+                  textTransform: 'none',
+                  fontSize: '0.9rem',
+                  py: 1,
+                  px: 2,
+                  minHeight: '44px', // Taille tactile recommandée
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                  '&:hover': {
+                    boxShadow: '0 4px 8px rgba(0,0,0,0.15)',
+                  }
+                }}
+              >
+                Déconnexion
+              </Button>
+            </Box>
+
+            {/* Logo et titre */}
             <Box 
               sx={{ 
                 display: 'flex', 
@@ -241,34 +294,6 @@ function ListPage() {
                 </Typography>
               )}
             </Box>
-            
-            <Button
-              variant="outlined"
-              color="primary"
-              onClick={handleBackToDashboard}
-              startIcon={<ArrowBackIcon />}
-              sx={{ 
-                position: 'absolute', 
-                top: 8, 
-                left: 0
-              }}
-            >
-              Retour
-            </Button>
-            
-            <Button
-              variant="outlined"
-              color="primary"
-              onClick={handleLogout}
-              startIcon={<ExitToAppIcon />}
-              sx={{ 
-                position: 'absolute', 
-                top: 8, 
-                right: 0
-              }}
-            >
-              Déconnexion
-            </Button>
             
             <AddItemForm onAdd={handleAddItem} />
             

@@ -3,46 +3,89 @@ import { db } from '../config/firebase';
 
 // Articles courants pour pré-remplir l'historique
 const commonItems = [
-  { name: 'Oeufs', category: 'Produits Laitiers', count: 15 },
-  { name: 'Tomates', category: 'Fruits et Légumes', count: 12 },
-  { name: 'Pain', category: 'Épicerie', count: 20 },
-  { name: 'Lait', category: 'Produits Laitiers', count: 18 },
-  { name: 'Fromage', category: 'Produits Laitiers', count: 10 },
-  { name: 'Pommes', category: 'Fruits et Légumes', count: 14 },
-  { name: 'Bananes', category: 'Fruits et Légumes', count: 16 },
-  { name: 'Poulet', category: 'Viandes', count: 8 },
-  { name: 'Pâtes', category: 'Épicerie', count: 11 },
-  { name: 'Riz', category: 'Épicerie', count: 9 },
+  // Produits Laitiers & Œufs
+  { name: 'Oeufs', category: 'Produits Laitiers & Œufs', count: 15 },
+  { name: 'Lait', category: 'Produits Laitiers & Œufs', count: 18 },
+  { name: 'Fromage', category: 'Produits Laitiers & Œufs', count: 10 },
+  { name: 'Yaourt', category: 'Produits Laitiers & Œufs', count: 12 },
+  { name: 'Beurre', category: 'Produits Laitiers & Œufs', count: 10 },
+  
+  // Fruits
+  { name: 'Pommes', category: 'Fruits', count: 14 },
+  { name: 'Bananes', category: 'Fruits', count: 16 },
+  { name: 'Oranges', category: 'Fruits', count: 10 },
+  { name: 'Fraises', category: 'Fruits', count: 8 },
+  { name: 'Kiwis', category: 'Fruits', count: 7 },
+  
+  // Légumes
+  { name: 'Tomates', category: 'Légumes', count: 12 },
+  { name: 'Carottes', category: 'Légumes', count: 9 },
+  { name: 'Courgettes', category: 'Légumes', count: 8 },
+  { name: 'Concombre', category: 'Légumes', count: 7 },
+  { name: 'Salade', category: 'Légumes', count: 11 },
+  { name: 'Poivrons', category: 'Légumes', count: 6 },
+  { name: 'Oignons', category: 'Légumes', count: 10 },
+  { name: 'Ail', category: 'Légumes', count: 8 },
+  { name: 'Pommes de terre', category: 'Légumes', count: 12 },
+  
+  // Viandes & Volailles
+  { name: 'Poulet', category: 'Viandes & Volailles', count: 8 },
+  { name: 'Viande hachée', category: 'Viandes & Volailles', count: 9 },
+  { name: 'Steak', category: 'Viandes & Volailles', count: 6 },
+  
+  // Charcuterie
+  { name: 'Jambon', category: 'Charcuterie', count: 11 },
+  { name: 'Saucisses', category: 'Charcuterie', count: 7 },
+  
+  // Poissons & Fruits de mer
+  { name: 'Saumon', category: 'Poissons & Fruits de mer', count: 5 },
+  { name: 'Thon', category: 'Poissons & Fruits de mer', count: 7 },
+  { name: 'Crevettes', category: 'Poissons & Fruits de mer', count: 4 },
+  
+  // Boulangerie & Pâtisserie
+  { name: 'Pain', category: 'Boulangerie & Pâtisserie', count: 20 },
+  { name: 'Baguette', category: 'Boulangerie & Pâtisserie', count: 18 },
+  { name: 'Croissants', category: 'Boulangerie & Pâtisserie', count: 8 },
+  
+  // Épicerie Salée
+  { name: 'Pâtes', category: 'Épicerie Salée', count: 11 },
+  { name: 'Riz', category: 'Épicerie Salée', count: 9 },
+  { name: 'Huile d\'olive', category: 'Épicerie Salée', count: 6 },
+  { name: 'Sel', category: 'Épicerie Salée', count: 4 },
+  { name: 'Poivre', category: 'Épicerie Salée', count: 4 },
+  
+  // Épicerie Sucrée
+  { name: 'Sucre', category: 'Épicerie Sucrée', count: 5 },
+  { name: 'Farine', category: 'Épicerie Sucrée', count: 6 },
+  { name: 'Chocolat', category: 'Épicerie Sucrée', count: 8 },
+  { name: 'Céréales', category: 'Épicerie Sucrée', count: 9 },
+  { name: 'Confiture', category: 'Épicerie Sucrée', count: 6 },
+  { name: 'Miel', category: 'Épicerie Sucrée', count: 5 },
+  { name: 'Nutella', category: 'Épicerie Sucrée', count: 7 },
+  
+  // Boissons
   { name: 'Eau', category: 'Boissons', count: 13 },
   { name: 'Jus d\'orange', category: 'Boissons', count: 7 },
-  { name: 'Yaourt', category: 'Produits Laitiers', count: 12 },
-  { name: 'Beurre', category: 'Produits Laitiers', count: 10 },
-  { name: 'Carottes', category: 'Fruits et Légumes', count: 9 },
-  { name: 'Courgettes', category: 'Fruits et Légumes', count: 8 },
-  { name: 'Concombre', category: 'Fruits et Légumes', count: 7 },
-  { name: 'Salade', category: 'Fruits et Légumes', count: 11 },
-  { name: 'Poivrons', category: 'Fruits et Légumes', count: 6 },
-  { name: 'Oignons', category: 'Fruits et Légumes', count: 10 },
-  { name: 'Ail', category: 'Fruits et Légumes', count: 8 },
-  { name: 'Pommes de terre', category: 'Fruits et Légumes', count: 12 },
-  { name: 'Viande hachée', category: 'Viandes', count: 9 },
-  { name: 'Saumon', category: 'Viandes', count: 5 },
-  { name: 'Thon', category: 'Épicerie', count: 7 },
-  { name: 'Huile d\'olive', category: 'Épicerie', count: 6 },
-  { name: 'Sel', category: 'Épicerie', count: 4 },
-  { name: 'Poivre', category: 'Épicerie', count: 4 },
-  { name: 'Sucre', category: 'Épicerie', count: 5 },
-  { name: 'Farine', category: 'Épicerie', count: 6 },
-  { name: 'Chocolat', category: 'Épicerie', count: 8 },
   { name: 'Café', category: 'Boissons', count: 10 },
   { name: 'Thé', category: 'Boissons', count: 7 },
-  { name: 'Céréales', category: 'Épicerie', count: 9 },
-  { name: 'Confiture', category: 'Épicerie', count: 6 },
-  { name: 'Miel', category: 'Épicerie', count: 5 },
-  { name: 'Dentifrice', category: 'Hygiène', count: 8 },
-  { name: 'Savon', category: 'Hygiène', count: 9 },
-  { name: 'Shampoing', category: 'Hygiène', count: 7 },
-  { name: 'Papier toilette', category: 'Hygiène', count: 10 },
+  { name: 'Coca', category: 'Boissons', count: 6 },
+  
+  // Surgelés
+  { name: 'Pizza', category: 'Surgelés', count: 8 },
+  { name: 'Frites', category: 'Surgelés', count: 9 },
+  { name: 'Glace', category: 'Surgelés', count: 10 },
+  
+  // Hygiène & Beauté
+  { name: 'Dentifrice', category: 'Hygiène & Beauté', count: 8 },
+  { name: 'Savon', category: 'Hygiène & Beauté', count: 9 },
+  { name: 'Shampoing', category: 'Hygiène & Beauté', count: 7 },
+  { name: 'Gel douche', category: 'Hygiène & Beauté', count: 8 },
+  
+  // Entretien & Maison
+  { name: 'Papier toilette', category: 'Entretien & Maison', count: 10 },
+  { name: 'Lessive', category: 'Entretien & Maison', count: 7 },
+  { name: 'Liquide vaisselle', category: 'Entretien & Maison', count: 6 },
+  { name: 'Éponges', category: 'Entretien & Maison', count: 5 },
 ];
 
 /**

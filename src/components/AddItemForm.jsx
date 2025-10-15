@@ -12,7 +12,7 @@ import {
 import AddIcon from '@mui/icons-material/Add';
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
-import { findCategory } from '../utils/categoryMapping';
+import { findCategory, getAllCategories } from '../utils/categoryMapping';
 import { useSuggestions } from '../hooks/useSuggestions';
 import { notificationService } from '../services/notificationService';
 import { ref, get, set } from 'firebase/database';
@@ -20,15 +20,8 @@ import { db } from '../config/firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { seedUserHistory, isHistoryEmpty } from '../utils/seedHistory';
 
-const categories = [
-  'Fruits et Légumes',
-  'Produits Laitiers',
-  'Viandes',
-  'Épicerie',
-  'Boissons',
-  'Hygiène',
-  'Autre'
-];
+// Récupérer les catégories depuis le système de mapping
+const categories = getAllCategories();
 
 export default function AddItemForm({ onAdd }) {
   const [item, setItem] = useState('');
