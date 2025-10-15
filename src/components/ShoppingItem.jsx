@@ -67,11 +67,30 @@ export default function ShoppingItem({ item, index, onRemove }) {
               sx={{
                 textDecoration: isCompleted ? 'line-through' : 'none',
                 color: isCompleted ? 'text.secondary' : 'text.primary',
+                fontWeight: 500,
               }}
             >
               {item.name}
-              {item.quantity && item.quantity !== '1' && ` (${item.quantity})`}
+              {item.quantity && item.quantity !== '1' && ` (×${item.quantity})`}
             </Typography>
+            {item.price && item.price > 0 && (
+              <Typography
+                variant="caption"
+                sx={{
+                  color: isCompleted ? 'text.disabled' : 'primary.main',
+                  fontWeight: 600,
+                  display: 'block',
+                  mt: 0.5,
+                }}
+              >
+                {(item.price * (parseInt(item.quantity) || 1)).toFixed(2)} €
+                {item.quantity && item.quantity !== '1' && (
+                  <span style={{ opacity: 0.7, marginLeft: '4px' }}>
+                    ({item.price.toFixed(2)}€ × {item.quantity})
+                  </span>
+                )}
+              </Typography>
+            )}
           </Box>
 
           <Chip

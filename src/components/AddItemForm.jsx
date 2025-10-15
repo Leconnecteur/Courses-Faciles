@@ -14,6 +14,7 @@ import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
 import { findCategory, getAllCategories } from '../utils/categoryMapping';
 import { useSuggestions } from '../hooks/useSuggestions';
+import { usePriceHistory } from '../hooks/usePriceHistory';
 import { notificationService } from '../services/notificationService';
 import { ref, get, set } from 'firebase/database';
 import { db } from '../config/firebase';
@@ -27,10 +28,13 @@ export default function AddItemForm({ onAdd }) {
   const [item, setItem] = useState('');
   const [category, setCategory] = useState(categories[0]);
   const [quantity, setQuantity] = useState('');
+  const [price, setPrice] = useState('');
   const [showDetails, setShowDetails] = useState(false);
   const [suggestions, setSuggestions] = useState([]);
   const [relatedItems, setRelatedItems] = useState([]);
+  const [suggestedPrice, setSuggestedPrice] = useState(null);
   const { getSuggestions, getRelatedItems, recentItems } = useSuggestions();
+  const { getSuggestedPrice, savePriceToHistory } = usePriceHistory();
   const { currentUser } = useAuth();
   const inputRef = useRef(null);
   const formRef = useRef(null);
@@ -99,6 +103,12 @@ export default function AddItemForm({ onAdd }) {
     if (item.trim()) {
       const suggestedCategory = findCategory(item);
       setCategory(suggestedCategory);
+      
+      // Obtenir le prix suggéré (mais ne pas pré-remplir le champ)
+      const priceInfo = getSuggestedPrice(item);
+      setSuggestedPrice(priceInfo);
+    } else {
+      setSuggestedPrice(null);
     }
   }, [item]);
 
@@ -126,10 +136,13 @@ export default function AddItemForm({ onAdd }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (item.trim()) {
+      const itemPrice = price ? parseFloat(price) : null;
+      
       const newItem = {
         name: item.trim(),
         category: category,
         quantity: quantity.trim() || '1',
+        price: itemPrice,
         timestamp: Date.now()
       };
       
@@ -142,9 +155,16 @@ export default function AddItemForm({ onAdd }) {
         // Sauvegarder dans l'historique
         await saveToHistory(newItem.name, newItem.category);
         
+        // Sauvegarder le prix dans l'historique si fourni
+        if (itemPrice && itemPrice > 0) {
+          await savePriceToHistory(newItem.name, itemPrice, newItem.category);
+        }
+        
         // Réinitialiser le formulaire après l'ajout réussi
         setItem('');
         setQuantity('');
+        setPrice('');
+        setSuggestedPrice(null);
         setShowDetails(false);
         
         // Focus sur le champ de saisie pour faciliter l'ajout d'un nouvel article
@@ -419,66 +439,163 @@ export default function AddItemForm({ onAdd }) {
         </Box>
 
         {showDetails && (
-          <Box sx={{ display: 'flex', gap: 1, mt: 2 }}>
-            <TextField
-              select
-              size="small"
-              label="Catégorie"
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
-              className="input-field"
-              sx={{ 
-                minWidth: 150,
-                '& .MuiOutlinedInput-root': {
-                  borderRadius: '12px',
-                  backgroundColor: '#F7FAFC',
-                  '&:hover': {
-                    '& > fieldset': {
-                      borderColor: 'primary.main',
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 2 }}>
+            {/* Prix avec suggestion */}
+            <Box>
+              <TextField
+                size="small"
+                type="number"
+                label="Prix (€)"
+                value={price}
+                onChange={(e) => setPrice(e.target.value)}
+                placeholder="0.00"
+                inputProps={{ 
+                  step: "0.01",
+                  min: "0",
+                  inputMode: "decimal"
+                }}
+                className="input-field"
+                sx={{
+                  width: '100%',
+                  '& .MuiOutlinedInput-root': {
+                    borderRadius: '12px',
+                    backgroundColor: '#F7FAFC',
+                    '&:hover': {
+                      '& > fieldset': {
+                        borderColor: 'primary.main',
+                      },
                     },
                   },
-                },
-                '& .MuiOutlinedInput-notchedOutline': {
-                  borderColor: 'transparent',
-                },
-                '&:hover .MuiOutlinedInput-notchedOutline': {
-                  borderColor: 'primary.light',
-                },
-              }}
-            >
-              {categories.map((cat) => (
-                <MenuItem key={cat} value={cat}>
-                  {cat}
-                </MenuItem>
-              ))}
-            </TextField>
+                  '& .MuiOutlinedInput-notchedOutline': {
+                    borderColor: 'transparent',
+                  },
+                  '&:hover .MuiOutlinedInput-notchedOutline': {
+                    borderColor: 'primary.light',
+                  },
+                }}
+              />
+              {suggestedPrice && (
+                <Box sx={{ mt: 1 }}>
+                  <Box 
+                    onClick={() => setPrice(suggestedPrice.suggested.toFixed(2))}
+                    sx={{ 
+                      display: 'inline-flex', 
+                      alignItems: 'center', 
+                      gap: 1, 
+                      p: 1,
+                      backgroundColor: '#E6FFFA',
+                      borderRadius: '8px',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s',
+                      '&:hover': {
+                        backgroundColor: '#B2F5EA',
+                        transform: 'scale(1.02)',
+                      }
+                    }}
+                  >
+                    <Typography variant="caption" sx={{ color: '#2C7A7B', fontWeight: 600 }}>
+                      {suggestedPrice.source === 'history' ? '💡 Votre prix habituel' : '💰 Prix moyen estimé'}: {suggestedPrice.suggested.toFixed(2)}€
+                    </Typography>
+                    <Typography variant="caption" sx={{ color: '#38B2AC', fontSize: '0.65rem' }}>
+                      (cliquer pour utiliser)
+                    </Typography>
+                  </Box>
+                  <Box sx={{ display: 'flex', gap: 0.5, mt: 0.5, flexWrap: 'wrap' }}>
+                    {suggestedPrice.trend === 'up' && (
+                      <Chip 
+                        label="↗ En hausse" 
+                        size="small" 
+                        color="error" 
+                        sx={{ height: '18px', fontSize: '0.65rem' }}
+                      />
+                    )}
+                    {suggestedPrice.trend === 'down' && (
+                      <Chip 
+                        label="↘ En baisse" 
+                        size="small" 
+                        color="success" 
+                        sx={{ height: '18px', fontSize: '0.65rem' }}
+                      />
+                    )}
+                    {suggestedPrice.source === 'database' && (
+                      <Chip 
+                        label="Estimation" 
+                        size="small" 
+                        sx={{ 
+                          height: '18px', 
+                          fontSize: '0.65rem',
+                          backgroundColor: '#E6FFFA',
+                          color: '#38B2AC'
+                        }}
+                      />
+                    )}
+                  </Box>
+                </Box>
+              )}
+            </Box>
 
-            <TextField
-              size="small"
-              type="number"
-              label="Quantité"
-              value={quantity}
-              onChange={(e) => setQuantity(e.target.value)}
-              className="input-field"
-              sx={{
-                width: 100,
-                '& .MuiOutlinedInput-root': {
-                  borderRadius: '12px',
-                  backgroundColor: '#F7FAFC',
-                  '&:hover': {
-                    '& > fieldset': {
-                      borderColor: 'primary.main',
+            <Box sx={{ display: 'flex', gap: 1 }}>
+              <TextField
+                select
+                size="small"
+                label="Catégorie"
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+                className="input-field"
+                sx={{ 
+                  flex: 1,
+                  minWidth: 150,
+                  '& .MuiOutlinedInput-root': {
+                    borderRadius: '12px',
+                    backgroundColor: '#F7FAFC',
+                    '&:hover': {
+                      '& > fieldset': {
+                        borderColor: 'primary.main',
+                      },
                     },
                   },
-                },
-                '& .MuiOutlinedInput-notchedOutline': {
-                  borderColor: 'transparent',
-                },
-                '&:hover .MuiOutlinedInput-notchedOutline': {
-                  borderColor: 'primary.light',
-                },
-              }}
-            />
+                  '& .MuiOutlinedInput-notchedOutline': {
+                    borderColor: 'transparent',
+                  },
+                  '&:hover .MuiOutlinedInput-notchedOutline': {
+                    borderColor: 'primary.light',
+                  },
+                }}
+              >
+                {categories.map((cat) => (
+                  <MenuItem key={cat} value={cat}>
+                    {cat}
+                  </MenuItem>
+                ))}
+              </TextField>
+
+              <TextField
+                size="small"
+                type="number"
+                label="Quantité"
+                value={quantity}
+                onChange={(e) => setQuantity(e.target.value)}
+                className="input-field"
+                sx={{
+                  width: 100,
+                  '& .MuiOutlinedInput-root': {
+                    borderRadius: '12px',
+                    backgroundColor: '#F7FAFC',
+                    '&:hover': {
+                      '& > fieldset': {
+                        borderColor: 'primary.main',
+                      },
+                    },
+                  },
+                  '& .MuiOutlinedInput-notchedOutline': {
+                    borderColor: 'transparent',
+                  },
+                  '&:hover .MuiOutlinedInput-notchedOutline': {
+                    borderColor: 'primary.light',
+                  },
+                }}
+              />
+            </Box>
           </Box>
         )}
       </Box>

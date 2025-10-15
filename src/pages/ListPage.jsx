@@ -14,6 +14,7 @@ import ShoppingList from '../components/ShoppingList';
 import AddItemForm from '../components/AddItemForm';
 import SearchBar from '../components/SearchBar';
 import CategoryFilter from '../components/CategoryFilter';
+import BudgetSummary from '../components/BudgetSummary';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import ExitToAppIcon from '@mui/icons-material/ExitToApp';
 import logo from '../assets/logo2.png';
@@ -302,6 +303,9 @@ function ListPage() {
                 {error}
               </Typography>
             )}
+
+            {/* Résumé du budget */}
+            {items.length > 0 && <BudgetSummary items={items} />}
 
             <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', mb: 3 }}>
               <CategoryFilter
